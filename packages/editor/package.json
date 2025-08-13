@@ -1,0 +1,15 @@
+{
+  "name": "@nexus-main/editor",
+  "version": "0.0.1",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./tailwind-plugin": {
+      "require": "./tailwind-plugin.js"
+    }
+  }
+}

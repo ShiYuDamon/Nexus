@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String      @id @default(cuid())
+  email         String      @unique
+  password      String
+  name          String?
+  avatar        String?
+  isActive      Boolean     @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  documents     Document[]
+  workspaces    WorkspaceUser[]
+  versions      DocumentVersion[]
+  comments      Comment[]
+}
+
+model Workspace {
+  id            String      @id @default(cuid())
+  name          String
+  description   String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  users         WorkspaceUser[]
+  documents     Document[]
+}
+
+model WorkspaceUser {
+  id            String      @id @default(cuid())
+  role          String      @default("member")
+  workspace     Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId   String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([workspaceId, userId])
+}
+
+model Document {
+  id            String      @id @default(cuid())
+  title         String
+  content       String?     @db.Text
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  workspace     Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId   String
+  author        User        @relation(fields: [authorId], references: [id])
+  authorId      String
+  versions      DocumentVersion[]
+  comments      Comment[]
+}
+
+
+model DocumentVersion {
+  id            String      @id @default(cuid())
+  versionNumber Int
+  title         String
+  content       String      @db.Text
+  contentDiff   String?     @db.Text
+  changeType    VersionChangeType @default(EDIT)
+  changeSummary String?
+  document      Document    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId    String
+  createdBy     User        @relation(fields: [createdById], references: [id])
+  createdById   String
+  createdAt     DateTime    @default(now())
+
+  comments      Comment[]
+
+  @@index([documentId, versionNumber])
+  @@index([documentId, createdAt])
+}
+
+
+model Comment {
+  id            String      @id @default(cuid())
+  content       String      @db.Text
+
+  blockId       String?     
+  textPosition  Int?        
+  textLength    Int?        
+  selectedText  String?     
+
+  isResolved    Boolean     @default(false)
+  isDeleted     Boolean     @default(false)
+
+  document      Document         @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId    String
+  author        User             @relation(fields: [authorId], references: [id])
+  authorId      String
+  parentComment Comment?         @relation("CommentReplies", fields: [parentId], references: [id])
+  parentId      String?
+  replies       Comment[]        @relation("CommentReplies")
+  
+  version       DocumentVersion? @relation(fields: [versionId], references: [id], onDelete: SetNull)
+  versionId     String?
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([documentId, isDeleted])
+  @@index([documentId, blockId])
+  @@index([parentId])
+  @@index([versionId])
+  @@index([documentId, versionId])
+}
+
+
+enum VersionChangeType {
+  CREATE    
+  EDIT      
+  TITLE    
+  RESTORE   
+  MERGE     
+}
